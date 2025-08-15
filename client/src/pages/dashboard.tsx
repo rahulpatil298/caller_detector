@@ -83,11 +83,14 @@ export default function Dashboard() {
     }
   };
 
-  // Analyze transcript when it changes and session is active
+  // Analyze transcript when it changes and session is active (reduced threshold for faster detection)
   useEffect(() => {
-    if (transcript && currentSession && transcript.length > 20) {
-      analyzeText(transcript, currentSession).then((result: any) => {
-        if (result?.analysis.isScam) {
+    if (transcript && currentSession && transcript.length > 10) {
+      // Analyze in chunks to catch scams early
+      const lastChunk = transcript.slice(-150); // Last 150 characters for real-time analysis
+      
+      analyzeText(lastChunk, currentSession).then((result: any) => {
+        if (result?.analysis.isScam && result.analysis.confidence >= 60) {
           setAlertData(result.analysis);
         }
       });

@@ -70,15 +70,22 @@ export function useSpeechRecognition() {
       
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'hi-IN'; // Hindi support
+      // Default to Hindi-India for better Indian language support
+      recognitionRef.current.lang = 'hi-IN';
       
-      // Support multiple languages
+      // Support multiple Indian languages
       if (navigator.language.startsWith('hi')) {
         recognitionRef.current.lang = 'hi-IN';
       } else if (navigator.language.startsWith('bn')) {
         recognitionRef.current.lang = 'bn-IN';
       } else if (navigator.language.startsWith('ta')) {
         recognitionRef.current.lang = 'ta-IN';
+      } else if (navigator.language.startsWith('te')) {
+        recognitionRef.current.lang = 'te-IN';
+      } else if (navigator.language.startsWith('mr')) {
+        recognitionRef.current.lang = 'mr-IN';
+      } else if (navigator.language.startsWith('gu')) {
+        recognitionRef.current.lang = 'gu-IN';
       } else {
         recognitionRef.current.lang = 'en-IN';
       }
@@ -101,7 +108,10 @@ export function useSpeechRecognition() {
           }
         }
 
-        setTranscript(prev => prev + finalTranscript + interimTranscript);
+        const newText = finalTranscript + interimTranscript;
+        if (newText.trim()) {
+          setTranscript(prev => prev + newText);
+        }
       };
 
       recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
@@ -115,16 +125,17 @@ export function useSpeechRecognition() {
             variant: "destructive",
           });
         } else if (event.error === 'no-speech') {
-          // Don't show error for no speech detected, just restart
+          // Auto-restart when no speech detected for continuous monitoring
           setTimeout(() => {
-            if (recognitionRef.current && !isListening) {
+            if (recognitionRef.current) {
               try {
                 recognitionRef.current.start();
+                setIsListening(true);
               } catch (e) {
-                console.log("Failed to restart recognition");
+                console.log("Auto-restart failed, user needs to manually restart");
               }
             }
-          }, 1000);
+          }, 1500);
         } else {
           toast({
             title: "Speech Recognition Error",

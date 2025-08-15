@@ -22,7 +22,7 @@ export function useScamDetection() {
     sessionId: string,
     speaker: string = "Caller"
   ): Promise<ScamAnalysisResult | null> => {
-    if (!transcription.trim() || transcription.length < 10) {
+    if (!transcription.trim() || transcription.length < 5) {
       return null;
     }
 
@@ -37,11 +37,25 @@ export function useScamDetection() {
 
       const result: ScamAnalysisResult = await response.json();
       
-      if (result.analysis.isScam) {
+      if (result.analysis.isScam && result.analysis.confidence >= 60) {
         toast({
-          title: "⚠️ Potential Scam Detected!",
-          description: `${result.analysis.scamType} detected with ${result.analysis.confidence}% confidence`,
+          title: "🚨 FRAUD ALERT! स्कैम अलर्ट!",
+          description: `${result.analysis.scamType} detected with ${result.analysis.confidence}% confidence. Detected patterns: ${result.analysis.patterns.join(', ')}`,
           variant: "destructive",
+        });
+        
+        // Also show browser notification if available
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('ScamGuard AI - FRAUD DETECTED!', {
+            body: `${result.analysis.scamType} with ${result.analysis.confidence}% confidence`,
+            icon: '/favicon.ico'
+          });
+        }
+      } else if (result.analysis.isScam && result.analysis.confidence >= 30) {
+        toast({
+          title: "⚠️ Suspicious Activity Detected",
+          description: `Possible ${result.analysis.scamType} (${result.analysis.confidence}% confidence)`,
+          variant: "default",
         });
       }
 
