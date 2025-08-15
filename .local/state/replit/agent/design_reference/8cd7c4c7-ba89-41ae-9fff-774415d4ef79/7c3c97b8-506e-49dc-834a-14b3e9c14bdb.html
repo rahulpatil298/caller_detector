@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScamGuard AI - Real-time Fraud Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#E3F2FD',
+                            500: '#1565C0',
+                            600: '#0D47A1',
+                            700: '#0A3D91'
+                        },
+                        success: {
+                            50: '#E8F5E8',
+                            500: '#2E7D32',
+                            600: '#1B5E20'
+                        },
+                        warning: {
+                            50: '#FFF3E0',
+                            500: '#ED6C02',
+                            600: '#E65100'
+                        },
+                        danger: {
+                            50: '#FFEBEE',
+                            500: '#D32F2F',
+                            600: '#C62828'
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                        'slide-up': 'slideUp 0.3s ease-out'
+                    },
+                    keyframes: {
+                        slideDown: {
+                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-shield-alt text-white text-sm"></i>
+                        </div>
+                        <h1 class="text-2xl font-bold text-gray-900">ScamGuard AI</h1>
+                    </div>
+                    <span class="ml-4 px-2 py-1 bg-success-50 text-success-600 text-xs font-medium rounded-full">
+                        Live Protection
+                    </span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-500">
+                        <i class="fas fa-microphone text-success-500"></i>
+                        Microphone Ready
+                    </span>
+                    <button class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- Alert Banner (Hidden by default, shown when scam detected) -->
+        <div id="alertBanner" class="hidden mb-6 animate-slide-down">
+            <div class="bg-danger-50 border-l-4 border-danger-500 p-4 rounded-lg shadow-sm">
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-exclamation-triangle text-danger-500 text-xl"></i>
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <h3 class="text-danger-800 font-semibold">⚠️ Potential Scam Detected!</h3>
+                        <p class="text-danger-700 mt-1 text-sm">
+                            The conversation contains suspicious patterns commonly associated with fraud attempts.
+                        </p>
+                        <div class="mt-2 flex space-x-2">
+                            <button class="bg-danger-500 text-white px-3 py-1 rounded text-sm font-medium hover:bg-danger-600">
+                                End Call
+                            </button>
+                            <button class="text-danger-600 px-3 py-1 text-sm font-medium hover:text-danger-800">
+                                View Analysis
+                            </button>
+                        </div>
+                    </div>
+                    <button class="flex-shrink-0 ml-3 text-danger-400 hover:text-danger-600" onclick="hideAlert()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Main Control Panel -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Recording Controls -->
+                <!-- @COMPONENT: RecordingControls -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold text-gray-900">Live Monitoring</h2>
+                        <div class="flex items-center space-x-2">
+                            <div class="w-2 h-2 bg-success-500 rounded-full animate-pulse"></div>
+                            <span class="text-sm text-success-600 font-medium">Active</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Recording Button -->
+                    <div class="text-center mb-6">
+                        <button id="recordButton" class="relative w-20 h-20 bg-primary-500 hover:bg-primary-600 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:shadow-xl">
+                            <i id="recordIcon" class="fas fa-microphone text-white text-2xl"></i>
+                            <div id="recordingPulse" class="hidden absolute inset-0 rounded-full bg-primary-300 animate-ping opacity-75"></div>
+                        </button>
+                        <p class="mt-3 text-sm text-gray-600">
+                            <span id="recordStatus">Click to start monitoring</span>
+                        </p>
+                    </div>
+
+                    <!-- Status Indicators -->
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <i class="fas fa-microphone-alt text-success-500 text-lg mb-2"></i>
+                            <p class="text-xs text-gray-600">Microphone</p>
+                            <p class="text-sm font-semibold text-success-600">Ready</p>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <i class="fas fa-language text-primary-500 text-lg mb-2"></i>
+                            <p class="text-xs text-gray-600">Speech-to-Text</p>
+                            <p class="text-sm font-semibold text-primary-600">Active</p>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 rounded-lg">
+                            <i class="fas fa-brain text-warning-500 text-lg mb-2"></i>
+                            <p class="text-xs text-gray-600">AI Analysis</p>
+                            <p class="text-sm font-semibold text-warning-600">Monitoring</p>
+                        </div>
+                    </div>
+
+                    <!-- Settings -->
+                    <div class="flex justify-between items-center text-sm">
+                        <div class="flex items-center space-x-4">
+                            <label class="flex items-center">
+                                <input type="checkbox" checked class="rounded text-primary-500 focus:ring-primary-500">
+                                <span class="ml-2 text-gray-600">Real-time alerts</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="rounded text-primary-500 focus:ring-primary-500">
+                                <span class="ml-2 text-gray-600">Save conversations</span>
+                            </label>
+                        </div>
+                        <select class="bg-gray-50 border border-gray-300 rounded px-2 py-1 text-xs">
+                            <option>English</option>
+                            <option>Spanish</option>
+                            <option>French</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: RecordingControls -->
+
+                <!-- Live Transcription -->
+                <!-- @COMPONENT: LiveTranscription -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div class="p-6 border-b border-gray-200">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-semibold text-gray-900">Live Transcription</h3>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs text-gray-500">Last updated: <span id="lastUpdate">--:--</span></span>
+                                <button class="text-gray-400 hover:text-gray-600 text-sm">
+                                    <i class="fas fa-expand-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6">
+                        <div id="transcriptionArea" class="min-h-[200px] max-h-[400px] overflow-y-auto space-y-4">
+                            <!-- Placeholder content -->
+                            <div class="flex items-center justify-center h-32 text-gray-400">
+                                <div class="text-center">
+                                    <i class="fas fa-microphone-slash text-2xl mb-2"></i>
+                                    <p class="text-sm">Start monitoring to see live transcription</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Example transcription entries (hidden by default) -->
+                            <div class="hidden transcription-entry space-y-3" data-mock="true">
+                                <div class="flex space-x-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <span class="text-xs font-medium text-blue-600">C</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center space-x-2 mb-1">
+                                            <span class="text-sm font-medium text-gray-900">Caller</span>
+                                            <span class="text-xs text-gray-500">14:32:15</span>
+                                        </div>
+                                        <p class="text-sm text-gray-700">Hello, this is calling from your bank's security department...</p>
+                                    </div>
+                                    <div class="flex-shrink-0">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-warning-50 text-warning-700">
+                                            <i class="fas fa-exclamation-triangle w-3 h-3 mr-1"></i>
+                                            Suspicious
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 flex justify-between items-center text-sm text-gray-500">
+                            <span>Confidence: <span class="font-medium">95%</span></span>
+                            <span>Processing delay: <span class="font-medium">0.2s</span></span>
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: LiveTranscription -->
+            </div>
+
+            <!-- Sidebar -->
+            <div class="space-y-6">
+                <!-- Quick Stats -->
+                <!-- @COMPONENT: QuickStats -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Protection Stats</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Calls Monitored</span>
+                            <span class="text-lg font-bold text-gray-900" data-bind="stats.callsMonitored">247</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Scams Detected</span>
+                            <span class="text-lg font-bold text-danger-600" data-bind="stats.scamsDetected">12</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">Protection Rate</span>
+                            <span class="text-lg font-bold text-success-600" data-bind="stats.protectionRate">98.3%</span>
+                        </div>
+                        <div class="pt-2 border-t border-gray-200">
+                            <div class="flex justify-between items-center text-xs text-gray-500">
+                                <span>Last 30 days</span>
+                                <span>Updated now</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: QuickStats -->
+
+                <!-- Recent Alerts -->
+                <!-- @COMPONENT: RecentAlerts -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div class="p-6 border-b border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-900">Recent Alerts</h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="space-y-3" data-mock="true">
+                            <!-- @MAP: recentAlerts.map(alert => ( -->
+                            <div class="flex items-start space-x-3 p-3 bg-danger-50 rounded-lg">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-exclamation-triangle text-danger-500 text-sm"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-danger-800">Impersonation Scam</p>
+                                    <p class="text-xs text-danger-600 mt-1">Detected phrases: "bank security", "verify account"</p>
+                                    <p class="text-xs text-gray-500 mt-1">2 hours ago</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start space-x-3 p-3 bg-warning-50 rounded-lg">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-flag text-warning-500 text-sm"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-warning-800">Suspicious Pattern</p>
+                                    <p class="text-xs text-warning-600 mt-1">Urgent payment request detected</p>
+                                    <p class="text-xs text-gray-500 mt-1">1 day ago</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-start space-x-3 p-3 bg-success-50 rounded-lg">
+                                <div class="flex-shrink-0">
+                                    <i class="fas fa-check-circle text-success-500 text-sm"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-success-800">Safe Call</p>
+                                    <p class="text-xs text-success-600 mt-1">No suspicious patterns detected</p>
+                                    <p class="text-xs text-gray-500 mt-1">2 days ago</p>
+                                </div>
+                            </div>
+                            <!-- @END_MAP )) -->
+                        </div>
+                        
+                        <button class="w-full mt-4 text-center text-sm text-primary-600 hover:text-primary-700 font-medium">
+                            View All Alerts
+                        </button>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: RecentAlerts -->
+
+                <!-- Privacy Notice -->
+                <!-- @COMPONENT: PrivacyNotice -->
+                <div class="bg-blue-50 rounded-xl border border-blue-200 p-4">
+                    <div class="flex items-start space-x-3">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-shield-alt text-blue-500"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h4 class="text-sm font-medium text-blue-900">Privacy Protected</h4>
+                            <p class="text-xs text-blue-700 mt-1">
+                                All processing happens locally. Your conversations are never stored or transmitted without permission.
+                            </p>
+                            <button class="text-xs text-blue-600 hover:text-blue-800 font-medium mt-2">
+                                Learn more about privacy →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_COMPONENT: PrivacyNotice -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="flex justify-between items-center text-sm text-gray-500">
+                <div class="flex items-center space-x-4">
+                    <span>© 2024 ScamGuard AI</span>
+                    <span>•</span>
+                    <a href="#" class="hover:text-gray-700">Privacy Policy</a>
+                    <span>•</span>
+                    <a href="#" class="hover:text-gray-700">Terms of Service</a>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span>Powered by</span>
+                    <span class="font-medium">Gemini AI</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        (function() {
+            // TODO: Implement business logic, API calls, and state management
+            
+            let isRecording = false;
+            let recognition = null;
+            
+            // Initialize Web Speech API if available
+            if ('webkitSpeechRecognition' in window) {
+                recognition = new webkitSpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+            }
+            
+            // DOM elements
+            const recordButton = document.getElementById('recordButton');
+            const recordIcon = document.getElementById('recordIcon');
+            const recordStatus = document.getElementById('recordStatus');
+            const recordingPulse = document.getElementById('recordingPulse');
+            const transcriptionArea = document.getElementById('transcriptionArea');
+            const lastUpdate = document.getElementById('lastUpdate');
+            const alertBanner = document.getElementById('alertBanner');
+            
+            // Recording button event
+            recordButton?.addEventListener('click', function() {
+                if (!isRecording) {
+                    startRecording();
+                } else {
+                    stopRecording();
+                }
+            });
+            
+            function startRecording() {
+                isRecording = true;
+                recordIcon.className = 'fas fa-stop text-white text-2xl';
+                recordStatus.textContent = 'Recording... Click to stop';
+                recordButton.className = recordButton.className.replace('bg-primary-500 hover:bg-primary-600', 'bg-danger-500 hover:bg-danger-600');
+                recordingPulse.classList.remove('hidden');
+                
+                // Clear transcription area and show it's active
+                transcriptionArea.innerHTML = `
+                    <div class="flex items-center space-x-2 text-primary-600">
+                        <div class="w-2 h-2 bg-primary-500 rounded-full animate-pulse"></div>
+                        <span class="text-sm font-medium">Listening...</span>
+                    </div>
+                `;
+                
+                // TODO: Start actual speech recognition
+                if (recognition) {
+                    recognition.start();
+                }
+                
+                // Simulate real-time updates
+                simulateTranscription();
+            }
+            
+            function stopRecording() {
+                isRecording = false;
+                recordIcon.className = 'fas fa-microphone text-white text-2xl';
+                recordStatus.textContent = 'Click to start monitoring';
+                recordButton.className = recordButton.className.replace('bg-danger-500 hover:bg-danger-600', 'bg-primary-500 hover:bg-primary-600');
+                recordingPulse.classList.add('hidden');
+                
+                // TODO: Stop actual speech recognition
+                if (recognition) {
+                    recognition.stop();
+                }
+            }
+            
+            // Simulate transcription for demo purposes
+            function simulateTranscription() {
+                if (!isRecording) return;
+                
+                const mockTranscriptions = [
+                    { speaker: 'Caller', text: 'Hello, this is John from your bank security department.', suspicious: true },
+                    { speaker: 'You', text: 'Oh, hi. What can I help you with?', suspicious: false },
+                    { speaker: 'Caller', text: 'We detected suspicious activity on your account. We need to verify your information immediately.', suspicious: true },
+                    { speaker: 'You', text: 'What kind of suspicious activity?', suspicious: false },
+                    { speaker: 'Caller', text: 'Someone tried to access your account from Nigeria. Can you provide your account number to verify?', suspicious: true }
+                ];
+                
+                let index = 0;
+                const interval = setInterval(() => {
+                    if (!isRecording || index >= mockTranscriptions.length) {
+                        clearInterval(interval);
+                        return;
+                    }
+                    
+                    addTranscriptionEntry(mockTranscriptions[index]);
+                    
+                    // Show alert for suspicious content
+                    if (mockTranscriptions[index].suspicious && index > 1) {
+                        showAlert();
+                    }
+                    
+                    index++;
+                    updateTimestamp();
+                }, 3000);
+            }
+            
+            function addTranscriptionEntry(entry) {
+                const transcriptionHtml = `
+                    <div class="flex space-x-3 animate-slide-up">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 ${entry.speaker === 'You' ? 'bg-green-100' : 'bg-blue-100'} rounded-full flex items-center justify-center">
+                                <span class="text-xs font-medium ${entry.speaker === 'You' ? 'text-green-600' : 'text-blue-600'}">${entry.speaker.charAt(0)}</span>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-1">
+                                <span class="text-sm font-medium text-gray-900">${entry.speaker}</span>
+                                <span class="text-xs text-gray-500">${new Date().toLocaleTimeString()}</span>
+                            </div>
+                            <p class="text-sm text-gray-700">${entry.text}</p>
+                        </div>
+                        <div class="flex-shrink-0">
+                            ${entry.suspicious ? `
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-warning-50 text-warning-700">
+                                    <i class="fas fa-exclamation-triangle w-3 h-3 mr-1"></i>
+                                    Suspicious
+                                </span>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                if (transcriptionArea.innerHTML.includes('Listening...')) {
+                    transcriptionArea.innerHTML = '';
+                }
+                
+                transcriptionArea.insertAdjacentHTML('beforeend', transcriptionHtml);
+                transcriptionArea.scrollTop = transcriptionArea.scrollHeight;
+            }
+            
+            function showAlert() {
+                alertBanner.classList.remove('hidden');
+                alertBanner.classList.add('animate-slide-down');
+            }
+            
+            function updateTimestamp() {
+                if (lastUpdate) {
+                    lastUpdate.textContent = new Date().toLocaleTimeString();
+                }
+            }
+            
+            // Global function for hiding alert
+            window.hideAlert = function() {
+                alertBanner.classList.add('hidden');
+            };
+            
+            // Initialize timestamp
+            updateTimestamp();
+            
+        })();
+    </script>
+</body>
+</html>
