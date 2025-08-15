@@ -51,44 +51,51 @@ export function useSpeechRecognition() {
       return;
     }
 
-    // Request microphone permission first
+    // Request microphone permission first with enhanced audio settings
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000
+        }
+      });
+      
+      // Test audio levels
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+      const microphone = audioContext.createMediaStreamSource(stream);
+      microphone.connect(analyser);
+      
+      console.log("Microphone connected and working");
+      
+      // Stop the test stream
+      stream.getTracks().forEach(track => track.stop());
+      audioContext.close();
+      
     } catch (error) {
-      console.error("Microphone permission denied:", error);
+      console.error("Microphone setup failed:", error);
       toast({
-        title: "Microphone Access Required",
-        description: "Please allow microphone access to use ScamGuard AI. Click the microphone icon in your browser's address bar.",
+        title: "Microphone Setup Failed",
+        description: "Please allow microphone access and ensure your microphone is working. Check browser settings.",
         variant: "destructive",
       });
       return;
     }
 
-    if (!recognitionRef.current) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      // Default to Hindi-India for better Indian language support
-      recognitionRef.current.lang = 'hi-IN';
-      
-      // Support multiple Indian languages
-      if (navigator.language.startsWith('hi')) {
-        recognitionRef.current.lang = 'hi-IN';
-      } else if (navigator.language.startsWith('bn')) {
-        recognitionRef.current.lang = 'bn-IN';
-      } else if (navigator.language.startsWith('ta')) {
-        recognitionRef.current.lang = 'ta-IN';
-      } else if (navigator.language.startsWith('te')) {
-        recognitionRef.current.lang = 'te-IN';
-      } else if (navigator.language.startsWith('mr')) {
-        recognitionRef.current.lang = 'mr-IN';
-      } else if (navigator.language.startsWith('gu')) {
-        recognitionRef.current.lang = 'gu-IN';
-      } else {
-        recognitionRef.current.lang = 'en-IN';
-      }
+    // Always recreate recognition for better reliability
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognition();
+    
+    // Enhanced speech recognition settings
+    recognitionRef.current.continuous = true;
+    recognitionRef.current.interimResults = true;
+    
+    // Set language with fallback chain for better Hindi support
+    recognitionRef.current.lang = 'hi-IN'; // Start with Hindi
+    
+    console.log("Speech recognition configured for:", recognitionRef.current.lang);
 
       recognitionRef.current.onstart = () => {
         setIsListening(true);
@@ -101,16 +108,32 @@ export function useSpeechRecognition() {
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i];
+          const transcript = result[0].transcript;
+          
           if (result.isFinal) {
-            finalTranscript += result[0].transcript;
+            finalTranscript += transcript + ' ';
+            console.log("Final speech detected:", transcript);
           } else {
-            interimTranscript += result[0].transcript;
+            interimTranscript += transcript;
+            console.log("Interim speech:", transcript);
           }
         }
 
-        const newText = finalTranscript + interimTranscript;
-        if (newText.trim()) {
-          setTranscript(prev => prev + newText);
+        // Update transcript with both final and interim results
+        if (finalTranscript.trim()) {
+          setTranscript(prev => prev + finalTranscript);
+        }
+        
+        // Show interim results too for better user feedback
+        if (interimTranscript.trim() && !finalTranscript) {
+          setTranscript(prev => {
+            // Remove previous interim results and add new ones
+            const lines = prev.split('\n');
+            if (lines[lines.length - 1].startsWith('[Listening...')) {
+              lines.pop();
+            }
+            return lines.join('\n') + '\n[Listening... "' + interimTranscript + '"]';
+          });
         }
       };
 
@@ -125,17 +148,19 @@ export function useSpeechRecognition() {
             variant: "destructive",
           });
         } else if (event.error === 'no-speech') {
+          console.log("No speech detected, attempting restart...");
           // Auto-restart when no speech detected for continuous monitoring
           setTimeout(() => {
-            if (recognitionRef.current) {
+            if (recognitionRef.current && isListening) {
               try {
                 recognitionRef.current.start();
-                setIsListening(true);
+                console.log("Speech recognition restarted");
               } catch (e) {
-                console.log("Auto-restart failed, user needs to manually restart");
+                console.log("Auto-restart failed:", e);
+                setIsListening(false);
               }
             }
-          }, 1500);
+          }, 1000);
         } else {
           toast({
             title: "Speech Recognition Error",
@@ -149,15 +174,24 @@ export function useSpeechRecognition() {
         setIsListening(false);
         console.log("Speech recognition ended");
       };
-    }
 
     try {
       recognitionRef.current.start();
+      console.log("Starting speech recognition...");
+      
+      // Show success message
+      toast({
+        title: "Microphone Active",
+        description: "ScamGuard is now listening for conversations in Hindi and English. Speak normally.",
+        variant: "default",
+      });
+      
     } catch (error) {
       console.error("Failed to start speech recognition:", error);
+      setIsListening(false);
       toast({
         title: "Failed to Start Recording",
-        description: "Could not start speech recognition. Make sure your microphone is connected and try again.",
+        description: "Could not start speech recognition. Try refreshing the page and ensure microphone permissions are granted.",
         variant: "destructive",
       });
     }
